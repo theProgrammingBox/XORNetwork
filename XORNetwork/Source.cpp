@@ -96,7 +96,7 @@ namespace GlobalVars
 {
 	Random random(Random::MakeSeed(0));
 	constexpr uint32_t INPUT = 2;
-	constexpr uint32_t HIDDEN = 2;
+	constexpr uint32_t HIDDEN = 4;
 	constexpr uint32_t OUTPUT = 2;
 	constexpr float ONE = 1.0f;
 	constexpr float ZERO = 0.0f;
@@ -196,7 +196,7 @@ int main()
 	float hiddenMatrix[GlobalVars::HIDDEN];
 	float cluHiddenMatrix[GlobalVars::HIDDEN];
 	float outputMatrix[GlobalVars::OUTPUT];
-	float cluOutputMatrix[GlobalVars::OUTPUT];
+	//float cluOutputMatrix[GlobalVars::OUTPUT];
 	float softmaxMatrix[GlobalVars::OUTPUT];
 
 	float inputHiddenWeights[GlobalVars::INPUT * GlobalVars::HIDDEN];
@@ -217,11 +217,22 @@ int main()
 	cpuGenerateUniform(hiddenBias, GlobalVars::HIDDEN, -1.0f, 1.0f);
 	cpuGenerateUniform(outputBias, GlobalVars::OUTPUT, -1.0f, 1.0f);
 
-	uint32_t iteration = 1000;
+	uint32_t iteration = 4000;
 	while (iteration--)
 	{
 		uint32_t input1 = GlobalVars::random.Ruint32() & 1;
 		uint32_t input2 = GlobalVars::random.Ruint32() & 1;
+
+		if (GlobalVars::random.Ruint32() & 1)
+		{
+			input1 = 1;
+		}
+
+		if (iteration == 0)
+		{
+			input1 = 1;
+			input2 = 1;
+		}
 		uint32_t expected = input1 ^ input2;
 		
 		inputMatrix[0] = input1;
@@ -339,18 +350,19 @@ int main()
 			cout << '\n';
 		}
 		
-		cpuCLU(outputMatrix, cluOutputMatrix, GlobalVars::OUTPUT);
+		//cpuCLU(outputMatrix, cluOutputMatrix, GlobalVars::OUTPUT);
 
-		if (debug)
+		/*if (debug)
 		{
 			cout << "CLU Output Matrix:\n";
 			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
 				cout << cluOutputMatrix[counter] << ' ';
 			cout << '\n';
 			cout << '\n';
-		}
+		}*/
 		
-		cpuSoftmax(cluOutputMatrix, softmaxMatrix, GlobalVars::OUTPUT);
+		//cpuSoftmax(cluOutputMatrix, softmaxMatrix, GlobalVars::OUTPUT);
+		cpuSoftmax(outputMatrix, softmaxMatrix, GlobalVars::OUTPUT);
 
 		if (debug)
 		{
@@ -390,27 +402,37 @@ int main()
 		
 		cout << "Score: " << avgScore / 100 << '\n';
 		
-		cpuSoftmaxGradient(softmaxMatrix, action == expected, action, cluOutputMatrix, GlobalVars::OUTPUT);
-
-		if (debug)
+		//cpuSoftmaxGradient(softmaxMatrix, action == expected, action, cluOutputMatrix, GlobalVars::OUTPUT);
+		/*if (debug)
 		{
 			cout << "Softmax Gradient:\n";
 			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
 				cout << cluOutputMatrix[counter] << ' ';
 			cout << '\n';
 			cout << '\n';
+		}*/
+		
+		cpuSoftmaxGradient(softmaxMatrix, action == expected, action, outputMatrix, GlobalVars::OUTPUT);
+		
+		if (debug)
+		{
+			cout << "Softmax Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << outputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
 		}
 		
-		cpuCLUGradient(outputMatrix, cluOutputMatrix, outputMatrix, GlobalVars::OUTPUT);
+		//cpuCLUGradient(outputMatrix, cluOutputMatrix, outputMatrix, GlobalVars::OUTPUT);
 
-		if (debug)
+		/*if (debug)
 		{
 			cout << "Output Gradient:\n";
 			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
 				cout << outputMatrix[counter] << ' ';
 			cout << '\n';
 			cout << '\n';
-		}
+		}*/
 		
 		cpuSgemmStridedBatched(
 			false, true,

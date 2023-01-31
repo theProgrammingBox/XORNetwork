@@ -217,7 +217,7 @@ int main()
 	cpuGenerateUniform(hiddenBias, GlobalVars::HIDDEN, -1.0f, 1.0f);
 	cpuGenerateUniform(outputBias, GlobalVars::OUTPUT, -1.0f, 1.0f);
 
-	uint32_t iteration = 4000;
+	uint32_t iteration = 1000;
 	while (iteration--)
 	{
 		uint32_t input1 = GlobalVars::random.Ruint32() & 1;

@@ -100,7 +100,7 @@ namespace GlobalVars
 	constexpr uint32_t OUTPUT = 2;
 	constexpr float ONE = 1.0f;
 	constexpr float ZERO = 0.0f;
-	constexpr float LEARNING_RATE = 0.1f;
+	constexpr float LEARNING_RATE = 0.01f;
 }
 
 void cpuGenerateUniform(float* matrix, uint32_t size, float min, float max)
@@ -217,7 +217,7 @@ int main()
 	cpuGenerateUniform(hiddenBias, GlobalVars::HIDDEN, -1.0f, 1.0f);
 	cpuGenerateUniform(outputBias, GlobalVars::OUTPUT, -1.0f, 1.0f);
 
-	uint32_t iteration = 1000;
+	uint32_t iteration = 4000;
 	while (iteration--)
 	{
 		uint32_t input1 = GlobalVars::random.Ruint32() & 1;
@@ -521,88 +521,50 @@ int main()
 			outputBias[counter] += outputMatrix[counter] * GlobalVars::LEARNING_RATE;
 		}
 	}
-
-	/*// print weights
+	cout << '\n';
+	
 	cout << "Input Hidden Weights:\n";
 	for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
 	{
 		for (uint32_t counter2 = 0; counter2 < GlobalVars::HIDDEN; counter2++)
-		{
 			cout << inputHiddenWeights[counter * GlobalVars::HIDDEN + counter2] << ' ';
-		}
 		cout << '\n';
 	}
+	cout << '\n';
+
+	cout << "Hidden Bias:\n";
+	for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+		cout << hiddenBias[counter] << ' ';
+	cout << '\n';
 	cout << '\n';
 
 	cout << "Hidden Output Weights:\n";
 	for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
 	{
 		for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
-		{
 			cout << hiddenOutputWeights[counter * GlobalVars::OUTPUT + counter2] << ' ';
-		}
 		cout << '\n';
 	}
 	cout << '\n';
 
-	// print biases
-	cout << "Hidden Bias:\n";
-	for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-	{
-		cout << hiddenBias[counter] << ' ';
-	}
-	cout << '\n';
-	cout << '\n';
-	
 	cout << "Output Bias:\n";
 	for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-	{
 		cout << outputBias[counter] << ' ';
-	}
 	cout << '\n';
 	cout << '\n';
 
-	// print gradients
+	// print the input and softmax output
+	cout << "Input:\n";
 	for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
-	{
-		for (uint32_t counter2 = 0; counter2 < GlobalVars::HIDDEN; counter2++)
-		{
-			cout << inputHiddenWeightsGradient[counter * GlobalVars::HIDDEN + counter2] << ' ';
-		}
-		cout << '\n';
-	}
-	cout << '\n';
-
-	for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-	{
-		for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
-		{
-			cout << hiddenOutputWeightsGradient[counter * GlobalVars::OUTPUT + counter2] << ' ';
-		}
-		cout << '\n';
-	}
-	cout << '\n';
-
-	// print input
-	for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
-	{
 		cout << inputMatrix[counter] << ' ';
-	}
+	cout << '\n';
 	cout << '\n';
 
-	// print hidden
-	for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-	{
-		cout << hiddenMatrix[counter] << ' ';
-	}
-	cout << '\n';
-	
-	// print output
+	cout << "Softmax Output:\n";
 	for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-	{
-		cout << outputMatrix[counter] << ' ';
-	}
-	cout << '\n';*/
+		cout << softmaxMatrix[counter] << ' ';
+	cout << '\n';
+	cout << '\n';
 	
 	return 0;
 }

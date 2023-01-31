@@ -179,11 +179,24 @@ void cpuSoftmaxGradient(float* outputMatrix, bool isSurvivor, uint32_t action, f
 		resultMatrix[counter] = (((counter == action) << 1) - 1) * agentGradient;
 }
 
+void cpuLinearlize(float* inputMatrix, float* outputMatrix, uint32_t size)
+{
+	for (uint32_t counter = size; counter--;)
+		outputMatrix[counter] = (inputMatrix[counter] > 0) ? 1 : -1;
+}
+
 int main()
 {
+	const bool debug = false;
+	float scores[100] = { 0 };
+	uint32_t idx = 0;
+	float avgScore = 0;
+	
 	float inputMatrix[GlobalVars::INPUT];
 	float hiddenMatrix[GlobalVars::HIDDEN];
+	float cluHiddenMatrix[GlobalVars::HIDDEN];
 	float outputMatrix[GlobalVars::OUTPUT];
+	float cluOutputMatrix[GlobalVars::OUTPUT];
 	float softmaxMatrix[GlobalVars::OUTPUT];
 
 	float inputHiddenWeights[GlobalVars::INPUT * GlobalVars::HIDDEN];
@@ -204,7 +217,7 @@ int main()
 	cpuGenerateUniform(hiddenBias, GlobalVars::HIDDEN, -1.0f, 1.0f);
 	cpuGenerateUniform(outputBias, GlobalVars::OUTPUT, -1.0f, 1.0f);
 
-	uint32_t iteration = 1;
+	uint32_t iteration = 1000;
 	while (iteration--)
 	{
 		uint32_t input1 = GlobalVars::random.Ruint32() & 1;
@@ -214,20 +227,23 @@ int main()
 		inputMatrix[0] = input1;
 		inputMatrix[1] = input2;
 
-		cout << "Input Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
-			cout << inputMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
-
-		cout << "Input Hidden Weights:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
+		if (debug)
 		{
-			for (uint32_t counter2 = 0; counter2 < GlobalVars::HIDDEN; counter2++)
-				cout << inputHiddenWeights[counter * GlobalVars::HIDDEN + counter2] << ' ';
+			cout << "Input Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
+				cout << inputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+
+			cout << "Input Hidden Weights:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
+			{
+				for (uint32_t counter2 = 0; counter2 < GlobalVars::HIDDEN; counter2++)
+					cout << inputHiddenWeights[counter * GlobalVars::HIDDEN + counter2] << ' ';
+				cout << '\n';
+			}
 			cout << '\n';
 		}
-		cout << '\n';
 
 		cpuSgemmStridedBatched(
 			false, false,
@@ -239,90 +255,111 @@ int main()
 			hiddenMatrix, GlobalVars::HIDDEN, GlobalVars::ZERO,
 			1);
 
-		cout << "Hidden Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-			cout << hiddenMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "Hidden Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << hiddenMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
 
-		cout << "Hidden Bias:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-			cout << hiddenBias[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+			cout << "Hidden Bias:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << hiddenBias[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
 		for (uint32_t counter = GlobalVars::HIDDEN; counter--;)
 			hiddenMatrix[counter] += hiddenBias[counter];
-		
-		cout << "Hidden Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-			cout << hiddenMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
-		
-		cpuCLU(hiddenMatrix, hiddenMatrix, GlobalVars::HIDDEN);
 
-		cout << "Hidden Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-			cout << hiddenMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
-
-		cout << "Hidden Output Weights:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+		if (debug)
 		{
-			for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
-				cout << hiddenOutputWeights[counter * GlobalVars::OUTPUT + counter2] << ' ';
+			cout << "Hidden Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << hiddenMatrix[counter] << ' ';
+			cout << '\n';
 			cout << '\n';
 		}
-		cout << '\n';
+		
+		cpuCLU(hiddenMatrix, cluHiddenMatrix, GlobalVars::HIDDEN);
+
+		if (debug)
+		{
+			cout << "CLU Hidden Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << cluHiddenMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+
+			cout << "Hidden Output Weights:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+			{
+				for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
+					cout << hiddenOutputWeights[counter * GlobalVars::OUTPUT + counter2] << ' ';
+				cout << '\n';
+			}
+			cout << '\n';
+		}
 		
 		cpuSgemmStridedBatched(
 			false, false,
 			GlobalVars::OUTPUT, 1, GlobalVars::HIDDEN,
 			&GlobalVars::ONE,
 			hiddenOutputWeights, GlobalVars::OUTPUT, GlobalVars::ZERO,
-			hiddenMatrix, GlobalVars::HIDDEN, GlobalVars::ZERO,
+			cluHiddenMatrix, GlobalVars::HIDDEN, GlobalVars::ZERO,
 			&GlobalVars::ZERO,
 			outputMatrix, GlobalVars::OUTPUT, GlobalVars::ZERO,
 			1);
 
-		cout << "Output Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << outputMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "Output Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << outputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
 
-		cout << "Output Bias:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << outputBias[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+			cout << "Output Bias:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << outputBias[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
 		for (uint32_t counter = GlobalVars::OUTPUT; counter--;)
 			outputMatrix[counter] += outputBias[counter];
 
-		cout << "Output Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << outputMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "Output Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << outputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
-		cpuCLU(outputMatrix, outputMatrix, GlobalVars::OUTPUT);
+		cpuCLU(outputMatrix, cluOutputMatrix, GlobalVars::OUTPUT);
 
-		cout << "Output Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << outputMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "CLU Output Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << cluOutputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
-		cpuSoftmax(outputMatrix, softmaxMatrix, GlobalVars::OUTPUT);
+		cpuSoftmax(cluOutputMatrix, softmaxMatrix, GlobalVars::OUTPUT);
 
-		cout << "Softmax Matrix:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << softmaxMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "Softmax Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << softmaxMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
 		float number = GlobalVars::random.Rfloat(0.0f, 1.0f);
 		uint32_t action = 0;
@@ -334,7 +371,7 @@ int main()
 			action -= (action == GlobalVars::OUTPUT) * GlobalVars::OUTPUT;
 		}
 
-		if (iteration < 8)
+		if (debug)
 		{
 			cout << "Input: " << input1 << " " << input2 << '\n';
 			cout << "Expected: " << expected << '\n';
@@ -346,21 +383,34 @@ int main()
 			cout << '\n';
 		}
 		
-		cpuSoftmaxGradient(softmaxMatrix, action == expected, action, softmaxMatrix, GlobalVars::OUTPUT);
-
-		cout << "Softmax Gradient:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << softmaxMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		avgScore -= scores[idx];
+		avgScore += (action == expected);
+		scores[idx++] = (action == expected);
+		idx -= (idx == 100) * 100;
 		
-		cpuCLUGradient(outputMatrix, softmaxMatrix, outputMatrix, GlobalVars::OUTPUT);
+		cout << "Score: " << avgScore / 100 << '\n';
+		
+		cpuSoftmaxGradient(softmaxMatrix, action == expected, action, cluOutputMatrix, GlobalVars::OUTPUT);
 
-		cout << "Output Gradient:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
-			cout << outputMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "Softmax Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << cluOutputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
+		
+		cpuCLUGradient(outputMatrix, cluOutputMatrix, outputMatrix, GlobalVars::OUTPUT);
+
+		if (debug)
+		{
+			cout << "Output Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::OUTPUT; counter++)
+				cout << outputMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
 		cpuSgemmStridedBatched(
 			false, true,
@@ -372,14 +422,20 @@ int main()
 			hiddenOutputWeightsGradient, GlobalVars::OUTPUT, GlobalVars::ZERO,
 			1);
 
-		cout << "Hidden Output Weights Gradient:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+		cpuLinearlize(hiddenOutputWeightsGradient, hiddenOutputWeightsGradient, GlobalVars::HIDDEN * GlobalVars::OUTPUT);
+
+
+		if (debug)
 		{
-			for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
-				cout << hiddenOutputWeightsGradient[counter * GlobalVars::OUTPUT + counter2] << ' ';
+			cout << "Hidden Output Weights Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+			{
+				for (uint32_t counter2 = 0; counter2 < GlobalVars::OUTPUT; counter2++)
+					cout << hiddenOutputWeightsGradient[counter * GlobalVars::OUTPUT + counter2] << ' ';
+				cout << '\n';
+			}
 			cout << '\n';
 		}
-		cout << '\n';
 		
 		cpuSgemmStridedBatched(
 			true, false,
@@ -388,16 +444,29 @@ int main()
 			hiddenOutputWeights, GlobalVars::OUTPUT, GlobalVars::ZERO,
 			outputMatrix, GlobalVars::OUTPUT, GlobalVars::ZERO,
 			&GlobalVars::ZERO,
-			hiddenMatrix, GlobalVars::HIDDEN, GlobalVars::ZERO,
+			cluHiddenMatrix, GlobalVars::HIDDEN, GlobalVars::ZERO,
 			1);
 
-		cout << "Hidden Gradient:\n";
-		for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
-			cout << hiddenMatrix[counter] << ' ';
-		cout << '\n';
-		cout << '\n';
+		if (debug)
+		{
+			cout << "CLU Hidden Matrix:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << cluHiddenMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
 		
-		cpuCLUGradient(inputMatrix, hiddenMatrix, hiddenMatrix, GlobalVars::HIDDEN);
+		cpuCLUGradient(hiddenMatrix, cluHiddenMatrix, hiddenMatrix, GlobalVars::HIDDEN);
+
+		if (debug)
+		{
+			cout << "Hidden Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::HIDDEN; counter++)
+				cout << hiddenMatrix[counter] << ' ';
+			cout << '\n';
+			cout << '\n';
+		}
+		
 		cpuSgemmStridedBatched(
 			false, true,
 			GlobalVars::HIDDEN, GlobalVars::INPUT, 1,
@@ -407,6 +476,21 @@ int main()
 			&GlobalVars::ZERO,
 			inputHiddenWeightsGradient, GlobalVars::HIDDEN, GlobalVars::ZERO,
 			1);
+
+		cpuLinearlize(inputHiddenWeightsGradient, inputHiddenWeightsGradient, GlobalVars::INPUT * GlobalVars::HIDDEN);
+		
+		if (debug)
+		{
+			cout << "Input Hidden Weights Gradient:\n";
+			for (uint32_t counter = 0; counter < GlobalVars::INPUT; counter++)
+			{
+				for (uint32_t counter2 = 0; counter2 < GlobalVars::HIDDEN; counter2++)
+					cout << inputHiddenWeightsGradient[counter * GlobalVars::HIDDEN + counter2] << ' ';
+				cout << '\n';
+			}
+			cout << '\n';
+		}
+		
 		/*cpuSgemmStridedBatched(
 			true, false,
 			GlobalVars::INPUT, 1, GlobalVars::HIDDEN,
